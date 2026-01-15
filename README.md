@@ -10,13 +10,13 @@ This repository contains a synthesizable **Asynchronous FIFO** (First-In, First-
 The design handles **Clock Domain Crossing (CDC)** using Gray code synchronization for read/write pointers. The verification environment is structured to verify data integrity, full/empty flag generation, and corner cases using constrained random stimulus and functional coverage.
 
 ## 🏗️ Design Architecture
-* **Depth:** [e.g., 16] words
-* **Width:** [e.g., 8] bits
+* **Depth:** Paremeterized, default to 16 words
+* **Width:** Paremeterized, default to 8 bits
 * **Synchronization:** 2-stage D-Flip-Flop synchronizers with Gray-to-Binary conversion.
 * **Memory:** Dual-port RAM inference.
 
 > **[Insert Block Diagram Image Here]**
-> *(Tip: Use Draw.io or Visio to draw the FIFO w/ pointers and synchronizers)*
+> *(Pending: Use Draw.io or Visio to draw the FIFO w/ pointers and synchronizers)*
 
 ## 🧪 Verification Environment (UVM)
 The testbench follows a modular UVM architecture with separated Write and Read agents.
