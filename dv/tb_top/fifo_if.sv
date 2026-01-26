@@ -42,4 +42,26 @@ interface fifo_if (input logic w_clk, input logic r_clk, input logic rst_n);
   modport R_DRV (clocking r_drv_cb);
   modport R_MON (clocking r_mon_cb);
 
+  // 7. SVA (SystemVerilog Assertions)
+  // Ensure we never write to a full FIFO (Protocol Check)
+  property p_no_overflow;
+    @(posedge w_clk) disable iff (!rst_n)
+    (w_en && w_full) |-> ##1 $stable(w_full); 
+  endproperty
+
+  // Ensure we never read from an empty FIFO (Protocol Check)
+  property p_no_underflow;
+    @(posedge r_clk) disable iff (!rst_n)
+    (r_en && r_empty) |-> ##1 $stable(r_empty);
+  endproperty
+
+  // Reset Check: Flags must be correct immediately after reset
+  property p_reset_check;
+    @(posedge w_clk) !rst_n |-> (w_full == 0 && r_empty == 1);
+  endproperty
+
+  ASSERT_OVERFLOW: assert property (p_no_overflow) else `uvm_error("SVA", "Write to FULL FIFO detected!");
+  ASSERT_UNDERFLOW: assert property (p_no_underflow) else `uvm_error("SVA", "Read from EMPTY FIFO detected!");
+  ASSERT_RESET:    assert property (p_reset_check) else `uvm_fatal("SVA", "Reset values incorrect!");
+
 endinterface
