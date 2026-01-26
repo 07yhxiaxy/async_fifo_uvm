@@ -1,45 +1,66 @@
-// dv/tb_top/fifo_if.sv
-interface fifo_if (input logic w_clk, input logic r_clk, input logic rst_n);
+// dv/tb_top/tb_top.sv
+`include "uvm_macros.svh"
+import uvm_pkg::*;
 
-  // 1. Signals
-  logic        w_en;
-  logic        w_full;
-  logic [7:0]  wdata;
-  
-  logic        r_en;
-  logic        r_empty;
-  logic [7:0]  rdata;
+// Import your Agents and Env (if using packages)
+// import fifo_pkg::*; 
 
-  // 2. Write Driver Clocking Block (Active)
-  clocking w_drv_cb @(posedge w_clk);
-    default input #1step output #1ns;
-    output w_en, wdata;
-    input  w_full;   // Driver needs to see Full to stop driving
-  endclocking
+module tb_top;
 
-  // 3. Write Monitor Clocking Block (Passive)
-  clocking w_mon_cb @(posedge w_clk);
-    default input #1step output #1ns;
-    input w_en, wdata, w_full;
-  endclocking
+  // 1. Signal Declaration
+  logic w_clk, r_clk;
+  logic rst_n;
 
-  // 4. Read Driver Clocking Block (Active)
-  clocking r_drv_cb @(posedge r_clk);
-    default input #1step output #1ns;
-    output r_en;
-    input  r_empty, rdata;
-  endclocking
+  // 2. Interface Instantiation
+  fifo_if intf(w_clk, r_clk, rst_n);
 
-  // 5. Read Monitor Clocking Block (Passive)
-  clocking r_mon_cb @(posedge r_clk);
-    default input #1step output #1ns;
-    input r_en, r_empty, rdata;
-  endclocking
+  // 3. DUT Instantiation
+  async_fifo DUT (
+    .w_clk   (intf.w_clk),
+    .w_rst_n (intf.rst_n),
+    .w_en    (intf.w_en),
+    .w_data  (intf.wdata),
+    .w_full  (intf.w_full),
+    
+    .r_clk   (intf.r_clk),
+    .r_rst_n (intf.rst_n),
+    .r_en    (intf.r_en),
+    .r_data  (intf.rdata),
+    .r_empty (intf.r_empty)
+  );
 
-  // 6. Modports (Optional but good for linting)
-  modport W_DRV (clocking w_drv_cb);
-  modport W_MON (clocking w_mon_cb);
-  modport R_DRV (clocking r_drv_cb);
-  modport R_MON (clocking r_mon_cb);
+  // 4. Clock Generation (Async Frequencies)
+  initial begin
+    w_clk = 0;
+    forever #5 w_clk = ~w_clk; // 100 MHz (Period 10ns)
+  end
 
-endinterface
+  initial begin
+    r_clk = 0;
+    forever #7 r_clk = ~r_clk; // ~71 MHz (Period 14ns)
+  end
+
+  // 5. Reset Generation
+  initial begin
+    rst_n = 0;
+    repeat(10) @(posedge w_clk); // Hold reset for 10 cycles
+    rst_n = 1;
+  end
+
+  // 6. UVM Startup
+  initial begin
+    // Pass Interface to UVM Config DB
+    // "null" = Global Scope
+    // "*"    = Accessible by all components
+    // "vif"  = The Key name used in Drivers/Monitors
+    uvm_config_db#(virtual fifo_if)::set(null, "*", "vif", intf);
+    
+    // Dump Waves (Standard for Debugging)
+    $dumpfile("dump.vcd");
+    $dumpvars(0, tb_top);
+    
+    // Run the Test
+    run_test("fifo_base_test");
+  end
+
+endmodule
